@@ -412,9 +412,76 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
             }
         }
     ])
-    
+    if(!channel?.length){
+        throw new ApiError(404,"Channel does not exist")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,channel[0],"User Channel Fetched sucessfully")
+    )
 })
-export {registerUser , 
+
+
+const getWatchHistory = asyncHandler(async(req,res) => {
+    const user = await  User.aggregate([
+        {
+            $match : {
+                _id : new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup : {
+                from : "videos",
+                localField : "watchHistory",
+                foreignField : "_id",
+                as : "watchHistory",
+                pipeline : [
+                    {
+                        $lookup : {
+                            from : "users",
+                            localField : "owner",
+                            foreignField : "_id",
+                            as : "owner",
+                            pipeline : [
+                                {
+                                    $project : {
+                                        fullName : 1,
+                                        username : 1,
+                                        avatar : 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields : {
+                            owner : {
+                                $first : "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].watchHistory,
+            "watch History fetched successfully"
+        )
+    )
+})
+
+
+
+export {
+    registerUser , 
     loginUser,
     logoutUser,
     refreshAccessToken,
@@ -423,5 +490,6 @@ export {registerUser ,
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    getUserChannelProfile
+    getUserChannelProfile,
+    getWatchHistory
 } 
